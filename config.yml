@@ -1,0 +1,61 @@
+version: 2.1
+
+workflows:
+  main:
+    jobs:
+      - build-and-test
+      - deploy-to-pypi:
+          filters:
+            branches:
+              only:
+                - master
+          requires:
+            - build-and-test
+
+commands:
+  install_base_env:
+    steps:
+      - run:
+          name: "install base env"
+          command: |
+            sudo apt-get update -y
+            pyenv install -f 3.6.5
+            pyenv global 3.6.5
+            pip install -U pip
+
+
+jobs:
+  build-and-test:
+    machine:
+      image: ubuntu-1604:201903-01 
+    steps:
+      - checkout
+      - install_base_env
+      - run:
+          name: "try to install"
+          command: |
+            pip install -e .
+  
+  deploy-to-pypi:
+    machine:
+      image: ubuntu-1604:201903-01 
+    steps:
+      - checkout
+      - install_base_env
+      - run:
+          name: init .pypirc
+          command: |
+            echo -e "[pypi]" >> ~/.pypirc
+            echo -e "username = $pu" >> ~/.pypirc
+            echo -e "password = $pp" >> ~/.pypirc
+      - run: 
+          name: create package
+          command: |
+            pip install wheel twine
+            python setup.py sdist bdist_wheel
+      - run: 
+          name: upload
+          command: twine upload dist/*
+
+
+
